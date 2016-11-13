@@ -10,7 +10,7 @@ import (
 )
 
 type JotOps struct {
-    fileName, curDir, dataDir, projDir string
+    curDir, dataDir string
 }
 
 func (jo JotOps) exists(path string) (bool, error) {
@@ -46,39 +46,64 @@ func (jo JotOps) makeDataDir() {
     }
 }
 
-func (jo JotOps) makeProjDir() string {
-    pathHash := jo.makeSha1(jo.curDir)
-    projDir := filepath.Join(jo.dataDir, pathHash)
-
-    _, err := jo.makeDir(jo.projDir)
+func (jo JotOps) makeProjDir() {
+    _, err := jo.makeDir(jo.GetProjDir())
 
     if err != nil {
         fmt.Fprintf(os.Stderr, "Coud not create project dir: %s", err)
     }
-
-    return projDir
 }
 
-func (jo JotOps) Start() {
+func (jo JotOps) GetDataDir() string {
+    return jo.dataDir
+}
+
+func (jo JotOps) GetProjDir() string {
+    pathHash := jo.makeSha1(jo.curDir)
+    return filepath.Join(jo.dataDir, pathHash)
+}
+
+func (jo JotOps) Init() {
 
     // create data dir if it doesn't exist
     jo.makeDataDir()
 
     // make project dir if it doesn't exist!
-    projDir := jo.makeProjDir()
-    filePath := filepath.Join(projDir, jo.fileName)
-
-    // fire up the default editor and start editing the file !!
-    jo.editFile()
+    jo.makeProjDir()
 }
 
-func (jo JotOps) editFile(filePath string) {
+func listDir(dirPath string) error {
+    d, err := os.Open(dirPath)
+
+    if err != nil {
+        return err
+    }
+
+    defer d.Close()
+    names, err := d.Readdirnames(-1)
+    if err != nil {
+        return err
+    }
+    for _, name := range names {
+        fstats, err := os.Stat(filepath.Join(dirPath, name))
+
+        if err != nil {
+            return err
+        }
+
+        fmt.Println(fstats.ModTime(), fstats.Name())
+    }
+
+    return err
+}
+
+func editFile(filePath string) {
     cmd := exec.Command("editor", filePath)
     cmd.Stdin = os.Stdin
     cmd.Stdout = os.Stdout
 
     err := cmd.Run()
-    if err != nil {
+    if err != nil { // add this to the case stmt???
         fmt.Fprintf(os.Stderr, "Coud not open file for editing: %s", err)
     }
 }
