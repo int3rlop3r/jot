@@ -1,2 +1,2 @@
-# jot
-Jot stuff without messing up your workspace!
+# Jot
+Jot stuff down without messing up your workspace!
