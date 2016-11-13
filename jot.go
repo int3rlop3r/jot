@@ -2,8 +2,10 @@ package main
 
 import (
     "fmt"
+    "log"
     "os"
     "strings"
+    "path/filepath"
 )
 
 func procCmd(jotArgs []string) {
@@ -32,6 +34,16 @@ func procCmd(jotArgs []string) {
         fmt.Println("Deleted all files in this project!")
     default:
         fmt.Println("Creating file:", jotArgs[1])
+        curdir, err := os.Getwd()
+        homedir := os.Getenv("HOME")
+        datadir := filepath.Join(homedir, ".jot")
+
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        jo := JotOps{jotArgs[1], curdir, datadir, ""}
+        jo.Start()
     }
 }
 
@@ -39,7 +51,8 @@ func main() {
     if len(os.Args) < 2 {
         fmt.Println("Usage: jot [options]")
     } else {
-        fmt.Println("Starting!")
+        fmt.Println("Opening editor")
         procCmd(os.Args)
+        fmt.Println("Done")
     }
 }
