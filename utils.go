@@ -24,6 +24,17 @@ func (jo JotOps) exists(path string) (bool, error) {
 	return true, err
 }
 
+func (jo JotOps) JotExists(jotName string) bool {
+	jotPath := filepath.Join(jo.GetProjDir(), jotName)
+	jexists, err := jo.exists(jotPath)
+
+	if err != nil {
+		return false
+	}
+
+	return jexists
+}
+
 func (jo JotOps) makeSha1(dirpath string) string {
 	h := sha1.New()
 	h.Write([]byte(dirpath))
@@ -99,6 +110,21 @@ func (jo JotOps) ListDir(dirPath string) error {
 	}
 
 	return err
+}
+
+func (jo JotOps) RemoveFile(fileName string) {
+	// delete the file first
+	projDir := jo.GetProjDir()
+	os.Remove(filepath.Join(projDir, fileName))
+
+	// if there are no more files in this folder
+	// delete the folder as well
+	d, err := os.Open(projDir)
+	defer d.Close()
+
+	if _, err = d.Readdirnames(2); err != nil {
+		os.Remove(projDir)
+	}
 }
 
 func (jo JotOps) EditFile(filePath string) {
