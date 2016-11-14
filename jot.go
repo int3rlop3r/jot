@@ -24,14 +24,14 @@ func procCmd(jotArgs []string) {
 
 	switch jotArgs[1] {
 	case "ls":
-		fmt.Println("Jot files in this folder")
+		fmt.Print("Jot files in this folder")
 		err := jo.ListDir(jo.GetProjDir())
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "No jot files present for: %s", curdir)
 		}
 	case "clean-all":
-		fmt.Println("Delete all 'jot' files from this system?")
+		fmt.Print("Delete all 'jot' files from this system? [Y/n] ")
 		fmt.Scanln(&confrm)
 
 		if p := strings.ToLower(confrm); p != "yes" && p != "y" {
@@ -44,7 +44,7 @@ func procCmd(jotArgs []string) {
 
 		fmt.Println("Deleted all 'jot' files on this system!")
 	case "clean":
-		fmt.Println("Delete all 'jot' files in this project?")
+		fmt.Print("Delete all 'jot' files in this project? [Y/n] ")
 		fmt.Scanln(&confrm)
 
 		if p := strings.ToLower(confrm); p != "yes" && p != "y" {
