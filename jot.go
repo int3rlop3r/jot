@@ -8,6 +8,21 @@ import (
 	"strings"
 )
 
+func printUsage() {
+	fmt.Print(`Jot - jot stuff down without messing up your workspace!
+
+usage: jot [file]             edit jot file in working directory
+   or: jot <command> [<args>] perform misc operations
+
+commands:
+    ls          List jot files in the working directory
+    rm          Remove jot files from the working directory
+    clean       Remove all jot files from the working directory
+    clean-all   Remove all jot files in the system
+    help        Print Help (this message) and exit
+    `)
+}
+
 func procCmd(jotArgs []string) {
 	var confrm string
 
@@ -75,7 +90,7 @@ func procCmd(jotArgs []string) {
 
 		fmt.Println("Deleted all 'jot' files in this project!")
 	case "help":
-		fmt.Println("Displays this help page")
+		printUsage()
 	default:
 		absFilePath := filepath.Join(jo.GetProjDir(), jotArgs[1])
 		jo.EditFile(absFilePath)
@@ -84,7 +99,7 @@ func procCmd(jotArgs []string) {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: jot [options]")
+		printUsage()
 	} else {
 		procCmd(os.Args)
 	}
