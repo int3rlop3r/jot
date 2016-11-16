@@ -47,11 +47,12 @@ func procCmd(jotArgs []string) {
 		}
 	case "rm":
 		if 3 > len(jotArgs) {
-			fmt.Fprintf(os.Stderr, "Insufficient argumens passed to 'rm'")
+			fmt.Fprintf(os.Stderr, "Insufficient arguments passed to 'rm'")
 			return
 		}
 
 		jexists := jo.JotExists(jotArgs[2])
+
 		if !jexists {
 			fmt.Fprintf(os.Stderr, "No such jot: %s", jotArgs[2])
 			return
@@ -66,7 +67,7 @@ func procCmd(jotArgs []string) {
 		}
 		jo.RemoveFile(jotArgs[2])
 	case "clean-all":
-		fmt.Print("Delete all 'jot' files from this system? [y/N] ")
+		fmt.Print("Delete all jot files from this system? [y/N] ")
 		fmt.Scanln(&confrm)
 
 		if p := strings.ToLower(confrm); p != "yes" && p != "y" {
@@ -77,9 +78,9 @@ func procCmd(jotArgs []string) {
 		os.RemoveAll(datadir)
 		os.Mkdir(datadir, os.ModePerm)
 
-		fmt.Println("Deleted all 'jot' files on this system!")
+		fmt.Println("Deleted all jot files on this system!")
 	case "clean":
-		fmt.Print("Delete all 'jot' files in this project? [y/N] ")
+		fmt.Print("Delete all jot files in this project? [y/N] ")
 		fmt.Scanln(&confrm)
 
 		if p := strings.ToLower(confrm); p != "yes" && p != "y" {
@@ -88,7 +89,7 @@ func procCmd(jotArgs []string) {
 		}
 		os.RemoveAll(jo.GetProjDir())
 
-		fmt.Println("Deleted all 'jot' files in this project!")
+		fmt.Println("Deleted all jot files in this project!")
 	case "help":
 		printUsage()
 	default:
