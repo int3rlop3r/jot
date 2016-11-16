@@ -106,7 +106,7 @@ func (jo JotOps) ListDir(dirPath string) error {
 			return err
 		}
 
-		fmt.Println(fstats.ModTime(), fstats.Name())
+		fmt.Printf(fstats.ModTime().Format("Mon Jan _2 15:04:05 2006\t %s\n"), fstats.Name())
 	}
 
 	return err
