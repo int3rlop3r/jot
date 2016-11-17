@@ -20,7 +20,7 @@ commands:
     clean       Remove all jot files from the working directory
     clean-all   Remove all jot files in the system
     help        Print Help (this message) and exit
-    `)
+`)
 }
 
 func procCmd(jotArgs []string) {
