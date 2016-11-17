@@ -87,7 +87,7 @@ func (jo JotOps) Init() {
 
 }
 
-func (jo JotOps) ListDir(dirPath string) error {
+func (jo JotOps) ListDir(dirPath string, cb func(os.FileInfo)) error {
 	d, err := os.Open(dirPath)
 
 	if err != nil {
@@ -106,7 +106,8 @@ func (jo JotOps) ListDir(dirPath string) error {
 			return err
 		}
 
-		fmt.Printf(fstats.ModTime().Format("Mon Jan _2 15:04:05 2006\t %s\n"), fstats.Name())
+		cb(fstats)
+
 	}
 
 	return err

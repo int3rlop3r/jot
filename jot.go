@@ -39,7 +39,11 @@ func procCmd(jotArgs []string) {
 
 	switch jotArgs[1] {
 	case "ls":
-		err := jo.ListDir(jo.GetProjDir())
+		err := jo.ListDir(jo.GetProjDir(),
+			func(fstats os.FileInfo) {
+				fmt.Printf(fstats.ModTime().Format("Mon Jan _2 15:04:05 2006\t %s\n"),
+					fstats.Name())
+			})
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "No jots in this dir\n")
