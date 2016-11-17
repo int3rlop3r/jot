@@ -18,9 +18,11 @@ func (jo JotOps) exists(path string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
+
 	if os.IsNotExist(err) {
 		return false, nil
 	}
+
 	return true, err
 }
 
@@ -81,7 +83,6 @@ func (jo JotOps) GetProjDir() string {
 }
 
 func (jo JotOps) Init() {
-
 	// create data dir if it doesn't exist
 	jo.makeDataDir()
 
@@ -93,15 +94,15 @@ func (jo JotOps) ListDir(dirPath string, cb func(os.FileInfo)) error {
 	if err != nil {
 		return err
 	}
-
 	defer d.Close()
+
 	names, err := d.Readdirnames(-1)
 	if err != nil {
 		return err
 	}
+
 	for _, name := range names {
 		fstats, err := os.Stat(filepath.Join(dirPath, name))
-
 		if err != nil {
 			return err
 		}
@@ -114,12 +115,10 @@ func (jo JotOps) ListDir(dirPath string, cb func(os.FileInfo)) error {
 }
 
 func (jo JotOps) RemoveFile(fileName string) {
-	// delete the file first
 	projDir := jo.GetProjDir()
 	os.Remove(filepath.Join(projDir, fileName))
 
-	// if there are no more files in this folder
-	// delete the folder as well
+	// delete folder if no more files present
 	d, err := os.Open(projDir)
 	defer d.Close()
 
