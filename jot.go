@@ -38,6 +38,18 @@ func procCmd(jotArgs []string) {
 	jo.Init()
 
 	switch jotArgs[1] {
+	case "cp":
+		if 4 > len(jotArgs) {
+			fmt.Fprintf(os.Stderr, "Insufficient arguments passed to 'cp'")
+			return
+		}
+
+		srcJot, dstJot := jotArgs[2], jotArgs[3]
+		err := jo.CopyJot(srcJot, dstJot)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: ", err)
+			return
+		}
 	case "ls":
 		err := jo.ListDir(jo.GetProjDir(),
 			func(fstats os.FileInfo) {
@@ -97,7 +109,11 @@ func procCmd(jotArgs []string) {
 		printUsage()
 	default:
 		absFilePath := filepath.Join(jo.GetProjDir(), jotArgs[1])
-		jo.EditFile(absFilePath)
+		err = jo.EditFile(absFilePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "No such jot: %s", jotArgs[2])
+			return
+		}
 	}
 }
 

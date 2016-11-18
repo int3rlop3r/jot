@@ -3,7 +3,8 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/hex"
-	"fmt"
+	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,15 +27,9 @@ func (jo JotOps) exists(path string) (bool, error) {
 	return true, err
 }
 
-func (jo JotOps) JotExists(jotName string) bool {
-	jotPath := filepath.Join(jo.GetProjDir(), jotName)
-	jexists, err := jo.exists(jotPath)
-
-	if err != nil {
-		return false
-	}
-
-	return jexists
+func (jo JotOps) noSuchJot(path, jot string) error {
+	jpath := filepath.Join(path, jot)
+	return errors.New("No such jot path:" + jpath)
 }
 
 func (jo JotOps) makeSha1(dirpath string) string {
@@ -51,26 +46,108 @@ func (jo JotOps) makeDir(dirPath string) (bool, error) {
 	}
 
 	if !dexists {
-		os.Mkdir(dirPath, os.ModePerm)
+		err = os.Mkdir(dirPath, os.ModePerm)
 	}
 
 	return true, err
 }
 
-func (jo JotOps) makeDataDir() {
+func (jo JotOps) makeDataDir() error {
 	_, err := jo.makeDir(jo.dataDir)
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Coud not create data dir: %s", err)
-	}
+	return err
 }
 
-func (jo JotOps) makeProjDir() {
+func (jo JotOps) makeProjDir() error {
 	_, err := jo.makeDir(jo.GetProjDir())
+	return err
+}
+
+func (jo JotOps) JotExists(jotName string) bool {
+	jotPath := filepath.Join(jo.GetProjDir(), jotName)
+	jexists, err := jo.exists(jotPath)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Coud not create project dir: %s", err)
+		return false
 	}
+
+	return jexists
+}
+
+func (jo JotOps) JotDirExists(dirPath string) bool {
+	jotDir := jo.GetJotDir(dirPath)
+	jexists, err := jo.exists(jotDir)
+
+	if err != nil {
+		return false
+	}
+
+	return jexists
+}
+
+func (jo JotOps) GetJotDir(dirPath string) string {
+	pathHash := jo.makeSha1(dirPath)
+	return filepath.Join(jo.dataDir, pathHash)
+}
+
+func (jo JotOps) CopyJot(srcJot, dstPath string) error {
+	if !jo.JotExists(srcJot) {
+		return jo.noSuchJot(jo.curDir, srcJot)
+	}
+	srcj, err := os.Open(filepath.Join(jo.GetProjDir(), srcJot))
+	if err != nil {
+		return err
+	}
+
+	defer srcj.Close()
+
+	f, err := os.Open(dstPath)
+	defer f.Close()
+	if err != nil {
+		f, err = os.Open(filepath.Dir(dstPath))
+		if err != nil {
+			return err
+		}
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+
+	var newJot string
+	switch mode := fi.Mode(); {
+	case mode.IsDir():
+		// dst is a dir path
+		jpath := jo.GetJotDir(dstPath)
+		jo.makeDir(jpath)
+		newJot = filepath.Join(jpath, srcJot)
+	case mode.IsRegular():
+		// dst is a file path
+		jpath := jo.GetJotDir(filepath.Dir(dstPath))
+		jo.makeDir(jpath)
+		newJot = filepath.Join(jpath, filepath.Base(dstPath))
+	}
+
+	df, err := os.Create(newJot)
+	defer df.Close()
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(df, srcj); err != nil {
+		return err
+	}
+
+	if err = df.Sync(); err != nil {
+		return err
+	}
+
+	return err
+}
+
+func (jo JotOps) MoveJot(srcJot, dstPath string) error {
+	err := jo.CopyJot(srcJot, dstPath)
+	return err
 }
 
 func (jo JotOps) GetDataDir() string {
@@ -78,8 +155,7 @@ func (jo JotOps) GetDataDir() string {
 }
 
 func (jo JotOps) GetProjDir() string {
-	pathHash := jo.makeSha1(jo.curDir)
-	return filepath.Join(jo.dataDir, pathHash)
+	return jo.GetJotDir(jo.curDir)
 }
 
 func (jo JotOps) Init() {
@@ -108,7 +184,6 @@ func (jo JotOps) ListDir(dirPath string, cb func(os.FileInfo)) error {
 		}
 
 		cb(fstats)
-
 	}
 
 	return err
@@ -127,16 +202,19 @@ func (jo JotOps) RemoveFile(fileName string) {
 	}
 }
 
-func (jo JotOps) EditFile(filePath string) {
+func (jo JotOps) EditFile(filePath string) error {
 	// make project dir if it doesn't exist!
-	jo.makeProjDir()
+	err := jo.makeProjDir()
+
+	if err != nil {
+		return err
+	}
 
 	cmd := exec.Command("editor", filePath)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 
-	err := cmd.Run()
-	if err != nil { // add this to the case stmt???
-		fmt.Fprintf(os.Stderr, "Coud not open file for editing: %s", err)
-	}
+	err = cmd.Run()
+
+	return err
 }
