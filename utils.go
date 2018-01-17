@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -125,6 +126,20 @@ func (jo JotOps) RemoveFile(fileName string) {
 	if _, err = d.Readdirnames(2); err != nil {
 		os.Remove(projDir)
 	}
+}
+
+func (jo JotOps) CatFile(fileName string) error {
+	projDir := jo.GetProjDir()
+	f := filepath.Join(projDir, fileName)
+	contents, err := ioutil.ReadFile(f)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Print(string(contents))
+
+	return nil
 }
 
 func (jo JotOps) EditFile(filePath string) {

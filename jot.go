@@ -48,6 +48,20 @@ func procCmd(jotArgs []string) {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "No jots in this dir\n")
 		}
+	case "cat":
+		if 3 != len(jotArgs) {
+			fmt.Fprintf(os.Stderr, "Insufficient arguments passed to 'cat'")
+			return
+		}
+
+		jexists := jo.JotExists(jotArgs[2])
+
+		if !jexists {
+			fmt.Fprintf(os.Stderr, "No such jot: %s", jotArgs[2])
+			return
+		}
+
+		jo.CatFile(jotArgs[2])
 	case "rm":
 		if 3 > len(jotArgs) {
 			fmt.Fprintf(os.Stderr, "Insufficient arguments passed to 'rm'")
