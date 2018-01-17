@@ -17,6 +17,7 @@ usage: jot [file]             edit jot file in working directory
 commands:
     ls          List jot files in the working directory
     rm          Remove jot files from the working directory
+    cat         Print file contents on the standard output
     clean       Remove all jot files from the working directory
     clean-all   Remove all jot files in the system
     help        Print Help (this message) and exit
@@ -61,7 +62,13 @@ func procCmd(jotArgs []string) {
 			return
 		}
 
-		jo.CatFile(jotArgs[2])
+		err := jo.CatFile(jotArgs[2])
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "No such jot: %s", jotArgs[2])
+			return
+		}
+
 	case "rm":
 		if 3 > len(jotArgs) {
 			fmt.Fprintf(os.Stderr, "Insufficient arguments passed to 'rm'")
