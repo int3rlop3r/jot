@@ -1,131 +1,108 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"log"
 	"os"
-	"path/filepath"
 	"strings"
+	"time"
 )
 
-func printUsage() {
-	fmt.Print(`Jot - jot stuff down without messing up your workspace!
+var (
+	i         = flag.Bool("i", false, "Initialize a new project directory")
+	l         = flag.Bool("l", false, "List jot files in the working directory")
+	o         = flag.String("o", "", "Print file contents on the standard output")
+	d         = flag.Bool("d", false, "Delete a jot from the working directory")
+	D         = flag.Bool("D", false, "Delete all jots in the working directory")
+	clean_all = flag.Bool("clean-all", false, "Remove all jot files in the system (dangerous)")
+	list_all  = flag.Bool("list-all", false, "List all jot files in the system")
+	help      = flag.Bool("help", false, "Print Help (this message) and exit")
+)
+
+func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, `Jot - jot stuff down without messing up your workspace!
 
 usage: jot [file]             edit jot file in working directory
    or: jot <command> [<args>] perform misc operations
 
 commands:
-    ls          List jot files in the working directory
-    rm          Remove jot files from the working directory
-    cat         Print file contents on the standard output
-    clean       Remove all jot files from the working directory
-    clean-all   Remove all jot files in the system
-    help        Print Help (this message) and exit
-`)
+	-i         %v
+	-l         %v
+	-o         %v
+	-d         %v
+	-D         %v
+
+	-clean-all %v
+	-help      %v
+`, flag.Lookup("i").Usage,
+			flag.Lookup("l").Usage,
+			flag.Lookup("o").Usage,
+			flag.Lookup("d").Usage,
+			flag.Lookup("D").Usage,
+			flag.Lookup("clean-all").Usage,
+			flag.Lookup("help").Usage,
+		)
+	}
+
+	flag.Parse()
+	if len(os.Args) < 2 || *help {
+		flag.Usage()
+		return
+	}
+
+	processArgs()
 }
 
-func procCmd(jotArgs []string) {
-	var confrm string
-
-	curdir, err := os.Getwd()
-	homedir := os.Getenv("HOME")
-	datadir := filepath.Join(homedir, ".jot")
-
+func processArgs() {
+	curDir, _ := os.Getwd()
+	jotDir := getDBPath()
+	db, err := setupDB(jotDir)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "DB error: %s", err)
+		return
 	}
-
-	jo := &JotOps{curdir, datadir}
-	jo.Init()
-
-	switch jotArgs[1] {
-	case "ls":
-		err := jo.ListDir(jo.GetProjDir(),
-			func(fstats os.FileInfo) {
-				fmt.Printf(fstats.ModTime().Format("Mon Jan _2 15:04:05 2006\t %s\n"),
-					fstats.Name())
-			})
-
+	switch {
+	case *i:
+		if err := db.initialize(curDir); err != nil {
+			fmt.Fprint(os.Stderr, "Directory already tracked\n")
+		} else {
+			fmt.Println("Directory initialized")
+		}
+	case *l:
+		res, err := db.listByPath(curDir)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "No jots in this dir\n")
-		}
-	case "cat":
-		if 3 != len(jotArgs) {
-			fmt.Fprintf(os.Stderr, "Insufficient arguments passed to 'cat'")
+			fmt.Fprint(os.Stderr, "DB err:", err)
 			return
 		}
-
-		jexists := jo.JotExists(jotArgs[2])
-
-		if !jexists {
-			fmt.Fprintf(os.Stderr, "No such jot: %s", jotArgs[2])
-			return
+		var i int
+		for i = 0; res.Next(); i++ {
+			var t time.Time
+			var n string
+			res.Scan(&n, &t)
+			fmt.Printf("%s\t%s\n", t.Format("01-02-2006 15:04:05"), n)
 		}
-
-		err := jo.CatFile(jotArgs[2])
-
+		if i == 0 {
+			fmt.Println("No jots in this dir")
+		}
+	case *o != "":
+		jotName := strings.Join(os.Args[2:], " ")
+		var content string
+		err := db.get(curDir, jotName).Scan(&content)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "No such jot: %s", jotArgs[2])
+			fmt.Fprint(os.Stderr, "DB err:", err)
 			return
 		}
-
-	case "rm":
-		if 3 > len(jotArgs) {
-			fmt.Fprintf(os.Stderr, "Insufficient arguments passed to 'rm'")
-			return
-		}
-
-		jexists := jo.JotExists(jotArgs[2])
-
-		if !jexists {
-			fmt.Fprintf(os.Stderr, "No such jot: %s", jotArgs[2])
-			return
-		}
-
-		fmt.Printf("Delete %s? [y/N] ", jotArgs[2])
-		fmt.Scanln(&confrm)
-
-		if p := strings.ToLower(confrm); p != "yes" && p != "y" {
-			fmt.Println("Aborted")
-			return
-		}
-		jo.RemoveFile(jotArgs[2])
-	case "clean-all":
-		fmt.Print("Delete all jot files from this system? [y/N] ")
-		fmt.Scanln(&confrm)
-
-		if p := strings.ToLower(confrm); p != "yes" && p != "y" {
-			fmt.Println("Aborted")
-			return
-		}
-
-		os.RemoveAll(datadir)
-		os.Mkdir(datadir, os.ModePerm)
-
-		fmt.Println("Deleted all jot files on this system!")
-	case "clean":
-		fmt.Print("Delete all jot files in this project? [y/N] ")
-		fmt.Scanln(&confrm)
-
-		if p := strings.ToLower(confrm); p != "yes" && p != "y" {
-			fmt.Println("Aborted")
-			return
-		}
-		os.RemoveAll(jo.GetProjDir())
-
-		fmt.Println("Deleted all jot files in this project!")
-	case "help":
-		printUsage()
+		fmt.Println(content)
+	case *d:
+		fmt.Println("deleting")
+	case *D:
+		fmt.Println("deleting all current")
+	case *list_all:
+		fmt.Println("deleting all jot on computer")
+	case *clean_all:
+		fmt.Println("deleting all jot on computer")
 	default:
-		absFilePath := filepath.Join(jo.GetProjDir(), jotArgs[1])
-		jo.EditFile(absFilePath)
-	}
-}
-
-func main() {
-	if len(os.Args) < 2 {
-		printUsage()
-	} else {
-		procCmd(os.Args)
+		fmt.Println("creating new jot:", os.Args[1])
 	}
 }

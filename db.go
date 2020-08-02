@@ -12,11 +12,18 @@ import (
 const SQL_STMT = `
 create table jots (
 	id integer not null primary key,
+	path text unique
+);
+
+create table entries (
+	id integer not null primary key,
+	jot_id integer,
 	title text,
-	path text,
 	content text,
-	last_update timestamp default current_timestamp
-)
+	last_update timestamp default (datetime('now','localtime')),
+	foreign key (jot_id) references jots (id),
+	unique (jot_id, title)
+);
 `
 
 func getDBPath() string {
@@ -32,11 +39,9 @@ func setupDB(dbPath string) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open database: %s", err)
 	}
-	fmt.Println("opened the db")
 
 	info, err := os.Stat(dbPath)
 	if !os.IsNotExist(err) && !info.IsDir() {
-		fmt.Println("DB exists already")
 		return &DB{db}, nil
 	}
 
@@ -49,6 +54,17 @@ func setupDB(dbPath string) (*DB, error) {
 
 type DB struct {
 	*sql.DB
+}
+
+func (d *DB) initialize(curPath string) error {
+	stmt, err := d.Prepare("insert into jots (path) values (?)")
+	if err != nil {
+		return fmt.Errorf("init: couldn't setup prepared statement: %s", err)
+	}
+	if _, err := stmt.Exec(curPath); err != nil {
+		return fmt.Errorf("init: couldn't insert: %s", err)
+	}
+	return nil
 }
 
 func (d *DB) insert(path, title, content string) (int64, error) {
@@ -69,12 +85,17 @@ func (d *DB) insert(path, title, content string) (int64, error) {
 }
 
 func (d *DB) listByPath(path string) (*sql.Rows, error) {
-	q := "select * from jots where path = ?"
-	return d.Query(q, path)
+	q := `select b.title, b.last_update
+		from jots a
+		inner join entries b on a.id = b.jot_id
+		where a.path like ?`
+	return d.Query(q, path+"%")
 }
 
 func (d *DB) get(path, title string) *sql.Row {
-	q := "select * from jots where path = ? and title = ?"
+	q := `select b.content from jots a
+		inner join entries b on a.id = b.jot_id
+		where a.path like ?`
 	return d.QueryRow(q, path, title)
 }
 
@@ -88,13 +109,13 @@ func (d *DB) delete(path, title string) error {
 	return err
 }
 
-func main() {
-	db, err := setupDB()
-	if err != nil {
-		fmt.Println("error:", err)
-		return
-	}
-	defer func() { fmt.Println("closed the db"); db.Close() }()
+func bain() {
+	//db, err := setupDB()
+	//if err != nil {
+	//fmt.Println("error:", err)
+	//return
+	//}
+	//defer func() { fmt.Println("closed the db"); db.Close() }()
 
 	//// test insert
 	//id, err := db.insert("some path3", "some title", "another thing I had to say")
