@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -84,12 +86,37 @@ func (d *DB) insert(path, title, content string) (int64, error) {
 	return id, err
 }
 
-func (d *DB) listByPath(path string) (*sql.Rows, error) {
-	q := `select b.title, b.last_update
-		from jots a
-		inner join entries b on a.id = b.jot_id
-		where a.path like ?`
-	return d.Query(q, path+"%")
+func (d *DB) getJotDir(jotPath string) (int64, error) {
+	q := "select id, max(length(path)) from jots where path in (%s)"
+	pathParts := strings.Split(jotPath, "/")
+	partLen := len(pathParts)
+	paths := make([]interface{}, partLen, partLen)
+	qstns := make([]string, partLen, partLen)
+	for i := 0; i < partLen; i++ {
+		x := partLen - i
+		paths[i] = "/" + path.Join(pathParts[:x]...)
+		qstns[i] = "?"
+	}
+	var id, l sql.NullInt64
+	var query string = fmt.Sprintf(q, strings.Join(qstns, ","))
+	err := d.QueryRow(query, paths...).Scan(&id, &l)
+	if err != nil {
+		return 0, err
+	}
+	if id.Valid {
+		return id.Int64, nil
+	}
+	return 0, fmt.Errorf("couldn't find any jots for dir: %s", jotPath)
+}
+
+func (d *DB) listByPath(jotPath string) (*sql.Rows, error) {
+	id, err := d.getJotDir(jotPath)
+	if err != nil {
+		return nil, err
+	}
+	q := `select title, last_update
+		from  entries where jot_id = ?`
+	return d.Query(q, id)
 }
 
 func (d *DB) get(path, title string) *sql.Row {
