@@ -11,7 +11,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const SQL_STMT = `
+const (
+	SQL_STMT = `
 create table jots (
 	id integer not null primary key,
 	path text unique
@@ -27,6 +28,8 @@ create table entries (
 	unique (jot_id, title)
 );
 `
+	ERR_TRACKED = "init: couldn't insert: UNIQUE constraint failed: jots.path"
+)
 
 func getDBPath() string {
 	jothome := os.Getenv("JOTHOME")
@@ -89,6 +92,8 @@ func (d *DB) createJot(jotId int64, title, content string) (int64, error) {
 func (d *DB) getJotDir(jotPath string) (int64, error) {
 	q := "select id, max(length(path)) from jots where path in (%s)"
 	pathParts := strings.Split(jotPath, "/")
+
+	//@TODO: add a limit here, say of only 10 upper dirs
 	partLen := len(pathParts)
 	paths := make([]interface{}, partLen, partLen)
 	qstns := make([]string, partLen, partLen)
@@ -119,11 +124,18 @@ func (d *DB) listByPath(jotPath string) (*sql.Rows, error) {
 	return d.Query(q, id)
 }
 
-func (d *DB) get(path, title string) *sql.Row {
-	q := `select b.content from jots a
-		inner join entries b on a.id = b.jot_id
-		where a.path like ?`
-	return d.QueryRow(q, path, title)
+func (d *DB) get(jotId int64, title string) (string, error) {
+	var contents sql.NullString
+	q := `select content from entries
+		where jot_id = ? and title = ?`
+	err := d.QueryRow(q, jotId, title).Scan(&contents)
+	if err != nil {
+		return "", err
+	}
+	if !contents.Valid {
+		return "", fmt.Errorf("no jot named:", title)
+	}
+	return contents.String, nil
 }
 
 func (d *DB) delete(path, title string) error {

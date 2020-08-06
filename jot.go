@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -68,7 +67,11 @@ func processArgs() {
 	switch {
 	case *i:
 		if err := db.initialize(curDir); err != nil {
-			fmt.Fprint(os.Stderr, "Directory already tracked\n")
+			if err.Error() == ERR_TRACKED {
+				fmt.Fprint(os.Stderr, "Directory already tracked\n")
+			} else {
+				fmt.Fprint(os.Stderr, "DB error:", err)
+			}
 		} else {
 			fmt.Println("Directory initialized")
 		}
@@ -89,14 +92,13 @@ func processArgs() {
 			fmt.Println("No jots in this dir")
 		}
 	case *o != "":
-		jotName := strings.Join(os.Args[2:], " ")
-		var content string
-		err := db.get(curDir, jotName).Scan(&content)
+		jotName := *o
+		contents, err := getJot(db, curDir, jotName)
 		if err != nil {
 			fmt.Fprint(os.Stderr, "DB err:", err)
 			return
 		}
-		fmt.Println(content)
+		fmt.Fprint(os.Stdin, *contents)
 	case *d:
 		fmt.Println("deleting")
 	case *D:
@@ -115,13 +117,11 @@ func processArgs() {
 
 		tmpFile, err := ioutil.TempFile("", "jot")
 		if err != nil {
-			fmt.Println("couldn't make tmp file:", tmpFile)
+			fmt.Fprint(os.Stderr, "couldn't make tmp file:", tmpFile)
 			return
 		}
 		defer os.Remove(tmpFile.Name())
 		tmpFile.Close()
-
-		fmt.Println("testtest")
 
 		// open the jot in an editor
 		cmd := exec.Command("editor", tmpFile.Name())
@@ -135,15 +135,27 @@ func processArgs() {
 
 		jotContents, err := ioutil.ReadFile(tmpFile.Name())
 		if err != nil {
-			fmt.Println("error reading tmp file:", err)
+			fmt.Fprint(os.Stderr, "error reading tmp file:", err)
 			return
 		}
 
 		_, err = db.createJot(id, jotFile, string(jotContents))
 		if err != nil {
-			fmt.Println("error creating jot:", err)
+			fmt.Fprint(os.Stderr, "error creating jot:", err)
 			return
 		}
 		fmt.Printf("new jot '%s' created\n", jotFile)
 	}
+}
+
+func getJot(db *DB, curDir, jotName string) (*string, error) {
+	id, err := db.getJotDir(curDir)
+	if err != nil {
+		return nil, fmt.Errorf("jot dir not initialized:", err)
+	}
+	contents, err := db.get(id, jotName)
+	if err != nil {
+		return nil, fmt.Errorf("DB err:", err)
+	}
+	return &contents, nil
 }
