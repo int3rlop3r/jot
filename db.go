@@ -69,13 +69,13 @@ func (d *DB) initialize(curPath string) error {
 	return nil
 }
 
-func (d *DB) insert(path, title, content string) (int64, error) {
-	ins := "insert into jots (title, path, content) values (?, ?, ?)"
+func (d *DB) createJot(jotId int64, title, content string) (int64, error) {
+	ins := "insert into entries (jot_id, title, content) values (?, ?, ?)"
 	stmt, err := d.Prepare(ins)
 	if err != nil {
 		return 0, fmt.Errorf("couldn't setup prepared statement: %s", err)
 	}
-	res, err := stmt.Exec(title, path, content)
+	res, err := stmt.Exec(jotId, title, content)
 	if err != nil {
 		return 0, fmt.Errorf("couldn't execute prep statment:", err)
 	}

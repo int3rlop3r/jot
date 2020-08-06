@@ -3,12 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
 
 var (
+	// change i to t. -t to track directory and -u to untrack a directory
 	i         = flag.Bool("i", false, "Initialize a new project directory")
 	l         = flag.Bool("l", false, "List jot files in the working directory")
 	o         = flag.String("o", "", "Print file contents on the standard output")
@@ -103,6 +106,44 @@ func processArgs() {
 	case *clean_all:
 		fmt.Println("deleting all jot on computer")
 	default:
-		fmt.Println("creating new jot:", os.Args[1])
+		jotFile := os.Args[1]
+		id, err := db.getJotDir(curDir)
+		if err != nil {
+			fmt.Fprint(os.Stderr, "DB err:", err)
+			return
+		}
+
+		tmpFile, err := ioutil.TempFile("", "jot")
+		if err != nil {
+			fmt.Println("couldn't make tmp file:", tmpFile)
+			return
+		}
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		fmt.Println("testtest")
+
+		// open the jot in an editor
+		cmd := exec.Command("editor", tmpFile.Name())
+		cmd.Stdout = os.Stdout
+		cmd.Stdin = os.Stdin
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Println("couldn't create jot:", err)
+			return
+		}
+
+		jotContents, err := ioutil.ReadFile(tmpFile.Name())
+		if err != nil {
+			fmt.Println("error reading tmp file:", err)
+			return
+		}
+
+		_, err = db.createJot(id, jotFile, string(jotContents))
+		if err != nil {
+			fmt.Println("error creating jot:", err)
+			return
+		}
+		fmt.Printf("new jot '%s' created\n", jotFile)
 	}
 }
