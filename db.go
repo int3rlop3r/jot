@@ -108,10 +108,10 @@ func (d *DB) getJotDir(jotPath string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if id.Valid {
-		return id.Int64, nil
+	if !id.Valid {
+		return 0, fmt.Errorf("couldn't find any jots for dir: %s", jotPath)
 	}
-	return 0, fmt.Errorf("couldn't find any jots for dir: %s", jotPath)
+	return id.Int64, nil
 }
 
 func (d *DB) listByPath(jotPath string) (*sql.Rows, error) {
