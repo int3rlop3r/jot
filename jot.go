@@ -11,7 +11,7 @@ import (
 
 var (
 	// change i to t. -t to track directory and -u to untrack a directory
-	i         = flag.Bool("i", false, "Initialize a new project directory")
+	t         = flag.Bool("t", false, "Track current directory")
 	l         = flag.Bool("l", false, "List jot files in the working directory")
 	o         = flag.String("o", "", "Print file contents on the standard output")
 	d         = flag.Bool("d", false, "Delete a jot from the working directory")
@@ -29,7 +29,7 @@ usage: jot [file]             edit jot file in working directory
    or: jot <command> [<args>] perform misc operations
 
 commands:
-	-i         %v
+	-t         %v
 	-l         %v
 	-o         %v
 	-d         %v
@@ -37,7 +37,7 @@ commands:
 
 	-clean-all %v
 	-help      %v
-`, flag.Lookup("i").Usage,
+`, flag.Lookup("t").Usage,
 			flag.Lookup("l").Usage,
 			flag.Lookup("o").Usage,
 			flag.Lookup("d").Usage,
@@ -61,24 +61,20 @@ func processArgs() {
 	jotDir := getDBPath()
 	db, err := setupDB(jotDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DB error: %s", err)
+		fmt.Fprintf(os.Stderr, "DB error path: %s, error: %s", jotDir, err)
 		return
 	}
 	switch {
-	case *i:
+	case *t:
 		if err := db.initialize(curDir); err != nil {
-			if err.Error() == ERR_TRACKED {
-				fmt.Fprint(os.Stderr, "Directory already tracked\n")
-			} else {
-				fmt.Fprint(os.Stderr, "DB error:", err)
-			}
-		} else {
-			fmt.Println("Directory initialized")
+			fmt.Fprintln(os.Stderr, err)
+			return
 		}
+		fmt.Println("Directory initialized")
 	case *l:
 		res, err := db.listByPath(curDir)
 		if err != nil {
-			fmt.Fprint(os.Stderr, "DB err:", err)
+			fmt.Fprintf(os.Stderr, "DB err: %s\n", err)
 			return
 		}
 		var i int

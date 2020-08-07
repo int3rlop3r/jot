@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -28,28 +27,41 @@ create table entries (
 	unique (jot_id, title)
 );
 `
-	ERR_TRACKED = "init: couldn't insert: UNIQUE constraint failed: jots.path"
+	ERR_TRACKED = "UNIQUE constraint failed: jots.path"
 )
 
 func getDBPath() string {
-	jothome := os.Getenv("JOTHOME")
-	if jothome == "" {
-		jothome = filepath.Join(os.Getenv("HOME"), ".jot")
+	jotHome := os.Getenv("JOTHOME")
+	if jotHome == "" {
+		jotHome = path.Join(os.Getenv("HOME"), ".jot")
 	}
-	return filepath.Join(jothome, "jot.db")
+	return jotHome
 }
 
-func setupDB(dbPath string) (*DB, error) {
+func setupDB(dbDir string) (*DB, error) {
+	// create the directory if it doesn't exist
+	var isNew bool = false
+	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
+		if mkerr := os.MkdirAll(dbDir, 0775); mkerr != nil {
+			return nil, fmt.Errorf("couldn't set up db:", mkerr)
+		}
+		isNew = true
+	}
+
+	// check if db exists, return connection if it does
+	dbPath := path.Join(dbDir, "jot.db")
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		isNew = true
+	}
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open database: %s", err)
 	}
-
-	info, err := os.Stat(dbPath)
-	if !os.IsNotExist(err) && !info.IsDir() {
+	if !isNew {
 		return &DB{db}, nil
 	}
 
+	// create tables if it's a new database
 	_, err = db.Exec(SQL_STMT)
 	if err != nil {
 		return nil, fmt.Errorf("Error executing statement:", err)
@@ -67,6 +79,9 @@ func (d *DB) initialize(curPath string) error {
 		return fmt.Errorf("init: couldn't setup prepared statement: %s", err)
 	}
 	if _, err := stmt.Exec(curPath); err != nil {
+		if err.Error() == ERR_TRACKED {
+			return fmt.Errorf("directory already tracked")
+		}
 		return fmt.Errorf("init: couldn't insert: %s", err)
 	}
 	return nil
@@ -109,7 +124,7 @@ func (d *DB) getJotDir(jotPath string) (int64, error) {
 		return 0, err
 	}
 	if !id.Valid {
-		return 0, fmt.Errorf("couldn't find any jots for dir: %s", jotPath)
+		return 0, fmt.Errorf("jot dir not initialized: %s", jotPath)
 	}
 	return id.Int64, nil
 }
