@@ -23,7 +23,7 @@ create table entries (
 	title text,
 	content text,
 	last_update timestamp default (datetime('now','localtime')),
-	foreign key (jot_id) references jots (id),
+	foreign key (jot_id) references jots (id) on delete cascade,
 	unique (jot_id, title)
 );
 `
@@ -53,7 +53,7 @@ func setupDB(dbDir string) (*DB, error) {
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		isNew = true
 	}
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite3", fmt.Sprintf("%s?_foreign_keys=on", dbPath))
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open database: %s", err)
 	}
@@ -71,6 +71,20 @@ func setupDB(dbDir string) (*DB, error) {
 
 type DB struct {
 	*sql.DB
+}
+
+func (d *DB) uninitialize(curPath string) error {
+	stmt, err := d.Prepare("delete from jots where path = ?")
+	if err != nil {
+		return fmt.Errorf("init: couldn't setup prepared statement: %s", err)
+	}
+	if _, err := stmt.Exec(curPath); err != nil {
+		if err.Error() == ERR_TRACKED {
+			return fmt.Errorf("directory already tracked")
+		}
+		return fmt.Errorf("init: couldn't insert: %s", err)
+	}
+	return nil
 }
 
 func (d *DB) initialize(curPath string) error {
@@ -153,52 +167,12 @@ func (d *DB) get(jotId int64, title string) (string, error) {
 	return contents.String, nil
 }
 
-func (d *DB) delete(path, title string) error {
-	q := "delete from jots where path = ? and title = ?"
+func (d *DB) delete(jotId int64, title string) error {
+	q := "delete from entries where jot_id = ? and title = ?"
 	stmt, err := d.Prepare(q)
 	if err != nil {
 		return fmt.Errorf("couldn't delete:", err)
 	}
-	_, err = stmt.Exec(path, title)
+	_, err = stmt.Exec(jotId, title)
 	return err
-}
-
-func bain() {
-	//db, err := setupDB()
-	//if err != nil {
-	//fmt.Println("error:", err)
-	//return
-	//}
-	//defer func() { fmt.Println("closed the db"); db.Close() }()
-
-	//// test insert
-	//id, err := db.insert("some path3", "some title", "another thing I had to say")
-	//if err != nil {
-	//fmt.Println("error while inserting:", err)
-	//return
-	//}
-	//fmt.Println("Last insert id:", id)
-
-	//// test select
-	//rows, err := db.listByPath("some path3")
-	//if err != nil {
-	//fmt.Println("error while getting rows:", err)
-	//return
-	//}
-	//var id int
-	//var title, path, content string
-	//var last_updated time.Time
-	//for rows.Next() {
-	//e := rows.Scan(&id, &title, &path, &content, &last_updated)
-	//if e != nil {
-	//fmt.Println("scan error:", e)
-	//}
-	//fmt.Println(id, title, path, content, last_updated)
-	//}
-
-	//// test delete
-	//err = db.delete("some path3", "some title")
-	//if err != nil {
-	//fmt.Println(err)
-	//}
 }
