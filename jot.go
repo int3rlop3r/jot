@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -13,19 +14,18 @@ import (
 
 var (
 	// change i to t. -t to track directory and -u to untrack a directory
-	t         = flag.Bool("t", false, "Track current directory")
-	u         = flag.Bool("u", false, "Untrack current directory. Note: this will delete all jots in the dir")
-	l         = flag.Bool("l", false, "List jot files in the working directory")
-	o         = flag.String("o", "", "Print file contents on the standard output")
-	d         = flag.String("d", "", "Delete a jot from the working directory")
-	D         = flag.Bool("D", false, "Delete all jots in the working directory")
-	clean_all = flag.Bool("clean-all", false, "Remove all jot files in the system (dangerous)")
-	list_all  = flag.Bool("list-all", false, "List all jot files in the system")
-	help      = flag.Bool("help", false, "Print Help (this message) and exit")
+	t        = flag.Bool("t", false, "Track current directory")
+	u        = flag.Bool("u", false, "Untrack current directory. Note: this will delete all jots in the dir")
+	l        = flag.Bool("l", false, "List jot files in the working directory")
+	o        = flag.String("o", "", "Print file contents on the standard output")
+	d        = flag.String("d", "", "Delete a jot from the working directory")
+	cleanAll = flag.Bool("clean-all", false, "Remove all jot files in the system (dangerous)")
+	listAll  = flag.Bool("list-all", false, "List all jot files in the system")
+	help     = flag.Bool("help", false, "Print Help (this message) and exit")
 )
 
 func showUsage() {
-	var args = []string{"t", "u", "l", "o", "d", "D", "clean-all", "help"}
+	var args = []string{"t", "u", "l", "o", "d", "clean-all", "help"}
 	fmt.Fprintf(os.Stderr, `Jot - jot stuff down without messing up your workspace!
 
 usage: jot [file]             edit jot file in working directory
@@ -57,6 +57,7 @@ func processArgs() {
 	curDir, _ := os.Getwd()
 	jotDir := getDBPath()
 	db, err := setupDB(jotDir)
+	defer db.Close()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "DB error path: %s, error: %s", jotDir, err)
 		return
@@ -69,6 +70,10 @@ func processArgs() {
 		}
 		fmt.Println("Directory initialized")
 	case *u:
+		if !confirm(fmt.Sprintf("Untrack: %s?", curDir)) {
+			fmt.Fprintf("didn't delete: %s", curDir)
+			return
+		}
 		if err := db.uninitialize(curDir); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return
@@ -99,24 +104,31 @@ func processArgs() {
 		}
 		fmt.Fprint(os.Stdin, *contents)
 	case *d != "":
-		// @TODO: add confirmation
-		title := *d
+		if !confirm(fmt.Sprintf("Delete: %s", *d)) {
+			fmt.Fprintf(os.Stderr, "didn't delete: %s\n", *d)
+			return
+		}
+		jotName := *d
 		id, err := db.getJotDir(curDir)
 		if err != nil {
 			fmt.Fprint(os.Stderr, err)
 			return
 		}
-		err = db.delete(id, title)
+		err = db.delete(id, jotName)
 		if err != nil {
 			fmt.Fprint(os.Stderr, "DB err:", err)
 			return
 		}
-	case *D:
-		fmt.Println("deleting all current")
-	case *list_all:
-		fmt.Println("deleting all jot on computer")
-	case *clean_all:
-		fmt.Println("deleting all jot on computer")
+		fmt.Println("deleted:", *d)
+	case *listAll:
+		fmt.Println("list all jots on the system")
+	case *cleanAll:
+		if !confirm("DELETE ALL JOT FROM THE SYSTEM?") {
+			fmt.Fprintf(os.Stderr, "not deleted\n")
+			return
+		}
+		os.Remove(filepath.Join(jotDir, "jot.db"))
+		fmt.Println("deleted all jots")
 	default:
 		jotFile := os.Args[1]
 		id, err := db.getJotDir(curDir)
@@ -159,8 +171,10 @@ func processArgs() {
 }
 
 func confirm(prompt string) bool {
-	fmt.Println(fmt.Sprintf("%s [N/y]", prompt))
-	usrInput := strings.TrimSpace(strings.ToLower("y"))
+	fmt.Fprintf(os.Stderr, "%s [N/y] ", prompt)
+	var userInput string
+	fmt.Scanln(&userInput)
+	usrInput := strings.TrimSpace(strings.ToLower(userInput))
 	return usrInput == "y" || usrInput == "yes"
 }
 
