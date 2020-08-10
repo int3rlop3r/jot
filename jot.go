@@ -71,7 +71,7 @@ func processArgs() {
 		fmt.Println("Directory initialized")
 	case *u:
 		if !confirm(fmt.Sprintf("Untrack: %s?", curDir)) {
-			fmt.Fprintf("didn't delete: %s", curDir)
+			fmt.Fprintf(os.Stderr, "didn't delete: %s\n", curDir)
 			return
 		}
 		if err := db.uninitialize(curDir); err != nil {

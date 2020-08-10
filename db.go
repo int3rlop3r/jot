@@ -79,11 +79,16 @@ func (d *DB) uninitialize(curPath string) error {
 	if err != nil {
 		return fmt.Errorf("init: couldn't setup prepared statement: %s", err)
 	}
-	if _, err := stmt.Exec(curPath); err != nil {
-		if err.Error() == ERR_TRACKED {
-			return fmt.Errorf("directory already tracked")
-		}
+	res, err := stmt.Exec(curPath)
+	if err != nil {
 		return fmt.Errorf("init: couldn't insert: %s", err)
+	}
+	no, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if no == 0 {
+		return fmt.Errorf("didn't untrack jot dir '%s', be sure to CWD to the tracked dir before untracking", curPath)
 	}
 	return nil
 }
