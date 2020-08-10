@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -49,7 +50,7 @@ func setupDB(dbDir string) (*DB, error) {
 	}
 
 	// check if db exists, return connection if it does
-	dbPath := path.Join(dbDir, "jot.db")
+	dbPath := filepath.Join(dbDir, "jot.db")
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		isNew = true
 	}
