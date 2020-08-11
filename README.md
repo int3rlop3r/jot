@@ -9,13 +9,16 @@ Jot stuff down without messing up your workspace!
     
     usage: jot [file]             edit jot file in working directory
        or: jot <command> [<args>] perform misc operations
-
+    
     commands:
-      ls          List jot files in the working directory
-      rm          Remove jot files from the working directory
-      clean       Remove all jot files from the working directory
-      clean-all   Remove all jot files in the system
-      help        Print Help (this message) and exit
+        -t              Track current directory
+        -u              Untrack current directory. Note: this will delete all jots in the dir
+        -l              List jot files in the working directory
+        -o              Print file contents on the standard output
+        -d              Delete a jot from the working directory
+        -clean-all      Remove all jot files in the system (dangerous)
+        -list-jots      List all jot dirs in the system
+        -help           Print Help (this message) and exit
 
 ### Install
 
