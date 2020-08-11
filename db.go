@@ -149,6 +149,10 @@ func (d *DB) getJotDir(jotPath string) (int64, error) {
 	return id.Int64, nil
 }
 
+func (d *DB) listAllDirs() (*sql.Rows, error) {
+	return d.Query("select path from jots")
+}
+
 func (d *DB) listByPath(jotPath string) (*sql.Rows, error) {
 	id, err := d.getJotDir(jotPath)
 	if err != nil {

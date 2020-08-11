@@ -20,12 +20,12 @@ var (
 	o        = flag.String("o", "", "Print file contents on the standard output")
 	d        = flag.String("d", "", "Delete a jot from the working directory")
 	cleanAll = flag.Bool("clean-all", false, "Remove all jot files in the system (dangerous)")
-	listAll  = flag.Bool("list-all", false, "List all jot files in the system")
+	listJots = flag.Bool("list-jots", false, "List all jot dirs in the system")
 	help     = flag.Bool("help", false, "Print Help (this message) and exit")
 )
 
 func showUsage() {
-	var args = []string{"t", "u", "l", "o", "d", "clean-all", "help"}
+	var args = []string{"t", "u", "l", "o", "d", "clean-all", "list-jots", "help"}
 	fmt.Fprintf(os.Stderr, `Jot - jot stuff down without messing up your workspace!
 
 usage: jot [file]             edit jot file in working directory
@@ -120,8 +120,21 @@ func processArgs() {
 			return
 		}
 		fmt.Println("deleted:", *d)
-	case *listAll:
-		fmt.Println("list all jots on the system")
+	case *listJots:
+		res, err := db.listAllDirs()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "DB err: %s\n", err)
+			return
+		}
+		var i int
+		for i = 0; res.Next(); i++ {
+			var n string
+			res.Scan(&n)
+			fmt.Println(n)
+		}
+		if i == 0 {
+			fmt.Println("No jots on this system")
+		}
 	case *cleanAll:
 		if !confirm("DELETE ALL JOT FROM THE SYSTEM?") {
 			fmt.Fprintf(os.Stderr, "not deleted\n")
