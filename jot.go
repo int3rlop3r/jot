@@ -97,12 +97,13 @@ func processArgs() {
 		}
 	case *o != "":
 		jotName := *o
-		contents, err := getJot(db, curDir, jotName)
+		jot, err := getJot(db, curDir, jotName)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}
-		fmt.Fprint(os.Stdin, *contents)
+		fmt.Printf("Title: %s, Last updated: %s\n", jot.title, jot.lastUpdated.Format("01-02-2006 15:04:05"))
+		fmt.Fprint(os.Stdin, *(jot.contents))
 	case *d != "":
 		if !confirm(fmt.Sprintf("Delete: %s", *d)) {
 			fmt.Fprintf(os.Stderr, "didn't delete: %s\n", *d)
@@ -191,14 +192,14 @@ func confirm(prompt string) bool {
 	return usrInput == "y" || usrInput == "yes"
 }
 
-func getJot(db *DB, curDir, jotName string) (*string, error) {
+func getJot(db *DB, curDir, jotName string) (*Jot, error) {
 	id, err := db.getJotDir(curDir)
 	if err != nil {
 		return nil, err
 	}
-	contents, err := db.get(id, jotName)
+	jot, err := db.get(id, jotName)
 	if err != nil {
 		return nil, fmt.Errorf("DB err:", err)
 	}
-	return &contents, nil
+	return jot, nil
 }

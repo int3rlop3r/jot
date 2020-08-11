@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -163,18 +164,29 @@ func (d *DB) listByPath(jotPath string) (*sql.Rows, error) {
 	return d.Query(q, id)
 }
 
-func (d *DB) get(jotId int64, title string) (string, error) {
+type Jot struct {
+	jotId       int64
+	title       string
+	contents    *string
+	lastUpdated time.Time
+}
+
+func (d *DB) get(jotId int64, title string) (*Jot, error) {
+	var j Jot
 	var contents sql.NullString
-	q := `select content from entries
+	q := `select content, last_update from entries
 		where jot_id = ? and title = ?`
-	err := d.QueryRow(q, jotId, title).Scan(&contents)
+	err := d.QueryRow(q, jotId, title).Scan(&contents, &(j.lastUpdated))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if !contents.Valid {
-		return "", fmt.Errorf("no jot named:", title)
+		return nil, fmt.Errorf("no jot named:", title)
 	}
-	return contents.String, nil
+	j.contents = &contents.String
+	j.title = title
+	j.jotId = jotId
+	return &j, nil
 }
 
 func (d *DB) delete(jotId int64, title string) error {
