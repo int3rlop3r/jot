@@ -13,7 +13,6 @@ import (
 )
 
 var (
-	// change i to t. -t to track directory and -u to untrack a directory
 	t        = flag.Bool("t", false, "Track current directory")
 	u        = flag.Bool("u", false, "Untrack current directory. Note: this will delete all jots in the dir")
 	l        = flag.Bool("l", false, "List jot files in the working directory")
