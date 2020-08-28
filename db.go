@@ -25,7 +25,7 @@ create table entries (
 	jot_id integer,
 	title text,
 	content text,
-	last_update timestamp default (datetime('now','localtime')),
+	last_update timestamp default (datetime('now', 'localtime')),
 	foreign key (jot_id) references jots (id) on delete cascade,
 	unique (jot_id, title)
 );
@@ -109,6 +109,7 @@ func (d *DB) initialize(curPath string) error {
 	return nil
 }
 
+// @TODO: refactor this to take a jot object
 func (d *DB) createJot(jotId int64, title, content string) (int64, error) {
 	ins := "insert into entries (jot_id, title, content) values (?, ?, ?)"
 	stmt, err := d.Prepare(ins)
@@ -124,6 +125,25 @@ func (d *DB) createJot(jotId int64, title, content string) (int64, error) {
 		return 0, fmt.Errorf("couldn't get last id:", err)
 	}
 	return id, err
+}
+
+func (d *DB) updateJot(j *Jot) (int64, error) {
+	upd := `update entries set content = ?,
+			last_update = datetime('now', 'localtime')
+			where title = ? and jot_id = ?`
+	stmt, err := d.Prepare(upd)
+	if err != nil {
+		return 0, fmt.Errorf("couldn't setup prepared statement: %s", err)
+	}
+	res, err := stmt.Exec(*j.contents, j.title, j.id)
+	if err != nil {
+		return 0, fmt.Errorf("couldn't execute prep statment:", err)
+	}
+	no, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return no, nil
 }
 
 func (d *DB) getJotDir(jotPath string) (int64, error) {
@@ -169,11 +189,13 @@ type Jot struct {
 	id          int64
 	title       string
 	contents    *string
-	exists      bool
+	exists      bool // doesn't exist
 	lastUpdated time.Time
 }
 
 var NoJotErr = errors.New("jot not found")
+
+var x string // just a blank string
 
 func (d *DB) get(jotId int64, title string) (*Jot, error) {
 	var j Jot
@@ -183,6 +205,7 @@ func (d *DB) get(jotId int64, title string) (*Jot, error) {
 	j.id = jotId
 	err := d.QueryRow(q, jotId, title).Scan(&j.contents, &j.lastUpdated)
 	if err == sql.ErrNoRows {
+		j.contents = &x
 		return &j, fmt.Errorf("%s: %w", title, NoJotErr)
 	} else if err != nil {
 		return nil, err
@@ -199,4 +222,20 @@ func (d *DB) delete(jotId int64, title string) error {
 	}
 	_, err = stmt.Exec(jotId, title)
 	return err
+}
+
+func (d *DB) saveJot(jot *Jot, newJot bool) error {
+	if newJot {
+		_, err := d.createJot(jot.id, jot.title, *jot.contents)
+		if err != nil {
+			return err
+		}
+	} else {
+		no, err := d.updateJot(jot)
+		if err != nil {
+			return fmt.Errorf("couldn't save: %s, %w", jot.title, err)
+		}
+		fmt.Println("Remove me, rows affected:", no)
+	}
+	return nil
 }

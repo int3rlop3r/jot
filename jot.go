@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -101,8 +102,9 @@ func processArgs() {
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}
+		//fmt.Println(jot)
 		fmt.Printf("Title: %s, Last updated: %s\n", jot.title, jot.lastUpdated.Format("01-02-2006 15:04:05"))
-		fmt.Fprint(os.Stdin, *(jot.contents))
+		fmt.Fprint(os.Stdin, *jot.contents)
 	case *d != "":
 		if !confirm(fmt.Sprintf("Delete: %s", *d)) {
 			fmt.Fprintf(os.Stderr, "didn't delete: %s\n", *d)
@@ -143,29 +145,29 @@ func processArgs() {
 		os.Remove(filepath.Join(jotDir, "jot.db"))
 		fmt.Println("deleted all jots")
 	default:
-		jotFile := os.Args[1]
-		id, err := db.getJotDir(curDir)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+		jotName := os.Args[1]
+		jot, err := getJot(db, curDir, jotName)
+		newJot := errors.Is(err, NoJotErr)
+		if err != nil && !newJot {
+			fmt.Fprintf(os.Stderr, "some error occurred: %s", err)
 			return
 		}
 
+		// prepare the tmp file
 		tmpFile, err := ioutil.TempFile("", "jot")
 		if err != nil {
 			fmt.Fprint(os.Stderr, "couldn't make tmp file:", tmpFile)
 			return
 		}
 		defer os.Remove(tmpFile.Name())
+		if !newJot { // jot exists write to file
+			tmpFile.WriteString(*jot.contents)
+		}
 		tmpFile.Close()
 
 		// open the jot in an editor
-		cmd := exec.Command("editor", tmpFile.Name())
-		cmd.Stdout = os.Stdout
-		cmd.Stdin = os.Stdin
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Println("couldn't create jot:", err)
-			return
+		if err = openInEditor(tmpFile); err != nil {
+			fmt.Fprintf(os.Stderr, "%s", err)
 		}
 
 		jotContents, err := ioutil.ReadFile(tmpFile.Name())
@@ -173,13 +175,17 @@ func processArgs() {
 			fmt.Fprint(os.Stderr, "error reading tmp file:", err)
 			return
 		}
+		strContents := string(jotContents)
+		fmt.Println(strContents)
+		jot.contents = &strContents
 
-		_, err = db.createJot(id, jotFile, string(jotContents))
+		//_, err = db.createJot(jot.id, jotName, string(jotContents))
+		err = db.saveJot(jot, newJot)
 		if err != nil {
 			fmt.Fprint(os.Stderr, "error creating jot:", err)
 			return
 		}
-		fmt.Printf("new jot '%s' created\n", jotFile)
+		fmt.Printf("new jot '%s' created\n", jotName)
 	}
 }
 
@@ -198,7 +204,19 @@ func getJot(db *DB, curDir, jotName string) (*Jot, error) {
 	}
 	jot, err := db.get(id, jotName)
 	if err != nil {
-		return nil, fmt.Errorf("DB err:", err)
+		return jot, err
 	}
 	return jot, nil
+}
+
+func openInEditor(tmpFile *os.File) error {
+	// open the jot in an editor
+	cmd := exec.Command("editor", tmpFile.Name())
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Errorf("couldn't create jot:", err)
+	}
+	return nil
 }
