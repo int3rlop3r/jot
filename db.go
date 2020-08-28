@@ -109,14 +109,13 @@ func (d *DB) initialize(curPath string) error {
 	return nil
 }
 
-// @TODO: refactor this to take a jot object
-func (d *DB) createJot(jotId int64, title, content string) (int64, error) {
+func (d *DB) createJot(j *Jot) (int64, error) {
 	ins := "insert into entries (jot_id, title, content) values (?, ?, ?)"
 	stmt, err := d.Prepare(ins)
 	if err != nil {
 		return 0, fmt.Errorf("couldn't setup prepared statement: %s", err)
 	}
-	res, err := stmt.Exec(jotId, title, content)
+	res, err := stmt.Exec(j.id, j.title, *j.contents)
 	if err != nil {
 		return 0, fmt.Errorf("couldn't execute prep statment:", err)
 	}
@@ -189,7 +188,6 @@ type Jot struct {
 	id          int64
 	title       string
 	contents    *string
-	exists      bool // doesn't exist
 	lastUpdated time.Time
 }
 
@@ -210,7 +208,6 @@ func (d *DB) get(jotId int64, title string) (*Jot, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	j.exists = true
 	return &j, nil
 }
 
@@ -225,17 +222,15 @@ func (d *DB) delete(jotId int64, title string) error {
 }
 
 func (d *DB) saveJot(jot *Jot, newJot bool) error {
+	var err error
 	if newJot {
-		_, err := d.createJot(jot.id, jot.title, *jot.contents)
-		if err != nil {
-			return err
-		}
+		_, err = d.createJot(jot)
 	} else {
-		no, err := d.updateJot(jot)
-		if err != nil {
-			return fmt.Errorf("couldn't save: %s, %w", jot.title, err)
-		}
-		fmt.Println("Remove me, rows affected:", no)
+		_, err = d.updateJot(jot)
+	}
+
+	if err != nil {
+		return fmt.Errorf("couldn't save: %s, %w", jot.title, err)
 	}
 	return nil
 }
