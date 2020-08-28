@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -9,11 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattn/go-sqlite3"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const (
-	SQL_STMT = `
+const SqlStmt = `
 create table jots (
 	id integer not null primary key,
 	path text unique
@@ -29,8 +30,6 @@ create table entries (
 	unique (jot_id, title)
 );
 `
-	ERR_TRACKED = "UNIQUE constraint failed: jots.path"
-)
 
 func getDBPath() string {
 	jotHome := os.Getenv("JOTHOME")
@@ -64,7 +63,7 @@ func setupDB(dbDir string) (*DB, error) {
 	}
 
 	// create tables if it's a new database
-	_, err = db.Exec(SQL_STMT)
+	_, err = db.Exec(SqlStmt)
 	if err != nil {
 		return nil, fmt.Errorf("Error executing statement:", err)
 	}
@@ -100,10 +99,12 @@ func (d *DB) initialize(curPath string) error {
 		return fmt.Errorf("init: couldn't setup prepared statement: %s", err)
 	}
 	if _, err := stmt.Exec(curPath); err != nil {
-		if err.Error() == ERR_TRACKED {
+		sqliteErr, _ := err.(sqlite3.Error)
+		if sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 			return fmt.Errorf("directory already tracked")
+		} else {
+			return fmt.Errorf("init: couldn't insert: %v", err)
 		}
-		return fmt.Errorf("init: couldn't insert: %s", err)
 	}
 	return nil
 }
@@ -165,27 +166,28 @@ func (d *DB) listByPath(jotPath string) (*sql.Rows, error) {
 }
 
 type Jot struct {
-	jotId       int64
+	id          int64
 	title       string
 	contents    *string
+	exists      bool
 	lastUpdated time.Time
 }
 
+var NoJotErr = errors.New("jot not found")
+
 func (d *DB) get(jotId int64, title string) (*Jot, error) {
 	var j Jot
-	var contents sql.NullString
 	q := `select content, last_update from entries
 		where jot_id = ? and title = ?`
-	err := d.QueryRow(q, jotId, title).Scan(&contents, &(j.lastUpdated))
-	if err != nil {
+	j.title = title
+	j.id = jotId
+	err := d.QueryRow(q, jotId, title).Scan(&j.contents, &j.lastUpdated)
+	if err == sql.ErrNoRows {
+		return &j, fmt.Errorf("%s: %w", title, NoJotErr)
+	} else if err != nil {
 		return nil, err
 	}
-	if !contents.Valid {
-		return nil, fmt.Errorf("no jot named:", title)
-	}
-	j.contents = &contents.String
-	j.title = title
-	j.jotId = jotId
+	j.exists = true
 	return &j, nil
 }
 
