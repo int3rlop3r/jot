@@ -74,6 +74,15 @@ type DB struct {
 	*sql.DB
 }
 
+type Jot struct {
+	id          int64
+	title       string
+	contents    *string
+	lastUpdated time.Time
+}
+
+var NoJotErr = errors.New("jot not found") // returned when a jot entry isn't found
+
 func (d *DB) uninitialize(curPath string) error {
 	stmt, err := d.Prepare("delete from jots where path = ?")
 	if err != nil {
@@ -107,42 +116,6 @@ func (d *DB) initialize(curPath string) error {
 		}
 	}
 	return nil
-}
-
-func (d *DB) createJot(j *Jot) (int64, error) {
-	ins := "insert into entries (jot_id, title, content) values (?, ?, ?)"
-	stmt, err := d.Prepare(ins)
-	if err != nil {
-		return 0, fmt.Errorf("couldn't setup prepared statement: %s", err)
-	}
-	res, err := stmt.Exec(j.id, j.title, *j.contents)
-	if err != nil {
-		return 0, fmt.Errorf("couldn't execute prep statment:", err)
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("couldn't get last id:", err)
-	}
-	return id, err
-}
-
-func (d *DB) updateJot(j *Jot) (int64, error) {
-	upd := `update entries set content = ?,
-			last_update = datetime('now', 'localtime')
-			where title = ? and jot_id = ?`
-	stmt, err := d.Prepare(upd)
-	if err != nil {
-		return 0, fmt.Errorf("couldn't setup prepared statement: %s", err)
-	}
-	res, err := stmt.Exec(*j.contents, j.title, j.id)
-	if err != nil {
-		return 0, fmt.Errorf("couldn't execute prep statment:", err)
-	}
-	no, err := res.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
-	return no, nil
 }
 
 func (d *DB) getJotDir(jotPath string) (int64, error) {
@@ -184,16 +157,7 @@ func (d *DB) listByPath(jotPath string) (*sql.Rows, error) {
 	return d.Query(q, id)
 }
 
-type Jot struct {
-	id          int64
-	title       string
-	contents    *string
-	lastUpdated time.Time
-}
-
-var NoJotErr = errors.New("jot not found")
-
-var x string // just a blank string
+var x string // just a blank string, used to hold an empty buffer
 
 func (d *DB) get(jotId int64, title string) (*Jot, error) {
 	var j Jot
@@ -233,4 +197,40 @@ func (d *DB) saveJot(jot *Jot, newJot bool) error {
 		return fmt.Errorf("couldn't save: %s, %w", jot.title, err)
 	}
 	return nil
+}
+
+func (d *DB) createJot(j *Jot) (int64, error) {
+	ins := "insert into entries (jot_id, title, content) values (?, ?, ?)"
+	stmt, err := d.Prepare(ins)
+	if err != nil {
+		return 0, fmt.Errorf("couldn't setup prepared statement: %s", err)
+	}
+	res, err := stmt.Exec(j.id, j.title, *j.contents)
+	if err != nil {
+		return 0, fmt.Errorf("couldn't execute prep statment:", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("couldn't get last id:", err)
+	}
+	return id, err
+}
+
+func (d *DB) updateJot(j *Jot) (int64, error) {
+	upd := `update entries set content = ?,
+			last_update = datetime('now', 'localtime')
+			where title = ? and jot_id = ?`
+	stmt, err := d.Prepare(upd)
+	if err != nil {
+		return 0, fmt.Errorf("couldn't setup prepared statement: %s", err)
+	}
+	res, err := stmt.Exec(*j.contents, j.title, j.id)
+	if err != nil {
+		return 0, fmt.Errorf("couldn't execute prep statment:", err)
+	}
+	no, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return no, nil
 }
