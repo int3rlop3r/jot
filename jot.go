@@ -14,18 +14,18 @@ import (
 )
 
 var (
-	t        = flag.Bool("t", false, "Track current directory")
-	u        = flag.Bool("u", false, "Untrack current directory. Note: this will delete all jots in the dir")
-	l        = flag.Bool("l", false, "List jot files in the working directory")
-	o        = flag.String("o", "", "Print file contents on the standard output")
-	d        = flag.String("d", "", "Delete a jot from the working directory")
-	cleanAll = flag.Bool("clean-all", false, "Remove all jot files in the system (dangerous)")
-	listJots = flag.Bool("list-jots", false, "List all jot dirs in the system")
-	help     = flag.Bool("help", false, "Print Help (this message) and exit")
+	t           = flag.Bool("t", false, "Track current directory")
+	u           = flag.Bool("u", false, "Untrack current directory. Note: this will delete all jots in the dir")
+	l           = flag.Bool("l", false, "List jot files in the working directory")
+	o           = flag.String("o", "", "Print file contents on the standard output")
+	d           = flag.String("d", "", "Delete a jot from the working directory")
+	cleanAll    = flag.Bool("clean-all", false, "Remove all jot files in the system (dangerous)")
+	listTracked = flag.Bool("list-tracked", false, "List all tracked dirs")
+	help        = flag.Bool("help", false, "Print Help (this message) and exit")
 )
 
 func showUsage() {
-	var args = []string{"t", "u", "l", "o", "d", "clean-all", "list-jots", "help"}
+	var args = []string{"t", "u", "l", "o", "d", "clean-all", "list-tracked", "help"}
 	fmt.Fprintf(os.Stderr, `Jot - jot stuff down without messing up your workspace!
 
 usage: jot [file]             edit jot file in working directory
@@ -120,7 +120,7 @@ func processArgs() {
 			return
 		}
 		fmt.Println("deleted:", *d)
-	case *listJots:
+	case *listTracked:
 		res, err := db.listAllDirs()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "DB err: %s\n", err)
