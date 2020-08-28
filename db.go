@@ -188,13 +188,21 @@ func (d *DB) delete(jotId int64, title string) error {
 func (d *DB) saveJot(jot *Jot, newJot bool) error {
 	var err error
 	if newJot {
-		_, err = d.createJot(jot)
+		if *jot.contents != "" {
+			_, err = d.createJot(jot)
+		} else {
+			err = fmt.Errorf("can't create empty jot")
+		}
 	} else {
-		_, err = d.updateJot(jot)
+		if *jot.contents != "" {
+			_, err = d.updateJot(jot)
+		} else {
+			err = fmt.Errorf("can't clear jot contents, use the delete option instead")
+		}
 	}
 
 	if err != nil {
-		return fmt.Errorf("couldn't save: %s, %w", jot.title, err)
+		return fmt.Errorf("couldn't save: %s - %w", jot.title, err)
 	}
 	return nil
 }
