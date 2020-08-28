@@ -102,7 +102,6 @@ func processArgs() {
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}
-		fmt.Printf("Title: %s, Last updated: %s\n", jot.title, jot.lastUpdated.Format("01-02-2006 15:04:05"))
 		fmt.Fprint(os.Stdin, *jot.contents)
 	case *d != "":
 		if !confirm(fmt.Sprintf("Delete: %s", *d)) {
