@@ -19,13 +19,14 @@ var (
 	l           = flag.Bool("l", false, "List jot files in the working directory")
 	o           = flag.String("o", "", "Print file contents on the standard output")
 	d           = flag.String("d", "", "Delete a jot from the working directory")
+	m           = flag.String("m", "", "Import a file. The resulting file's name will be the jot's name")
 	cleanAll    = flag.Bool("clean-all", false, "Remove all jot files in the system (dangerous)")
 	listTracked = flag.Bool("list-tracked", false, "List all tracked dirs")
 	help        = flag.Bool("help", false, "Print Help (this message) and exit")
 )
 
 func showUsage() {
-	var args = []string{"t", "u", "l", "o", "d", "clean-all", "list-tracked", "help"}
+	var args = []string{"t", "u", "l", "o", "d", "m", "clean-all", "list-tracked", "help"}
 	fmt.Fprintf(os.Stderr, `Jot - jot stuff down without messing up your workspace!
 
 usage: jot [file]             edit jot file in working directory
@@ -120,6 +121,33 @@ func processArgs() {
 			return
 		}
 		fmt.Println("deleted:", *d)
+	case *m != "":
+
+		// first check if the dir is tracked
+		id, err := db.getJotDir(curDir)
+		if err != nil {
+			fmt.Fprint(os.Stderr, "DB err:", err)
+			return
+		}
+
+		// next read text file contents
+		_, jotName := filepath.Split(*m)
+		jotContents, err := ioutil.ReadFile(*m)
+		if err != nil {
+			fmt.Fprint(os.Stderr, "Import err:", err)
+			return
+		}
+
+		// construct and save the jot
+		newJot := true
+		jotConts := string(jotContents)
+		jot := &Jot{id, jotName, &jotConts, time.Now()}
+		err = db.saveJot(jot, newJot)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			return
+		}
+		fmt.Printf("saved '%s'\n", jotName)
 	case *listTracked:
 		res, err := db.listAllDirs()
 		if err != nil {
