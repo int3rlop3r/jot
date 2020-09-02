@@ -83,7 +83,7 @@ func processArgs() {
 	case *l:
 		res, err := db.listByPath(curDir)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "DB err: %s\n", err)
+			fmt.Fprintln(os.Stderr, err)
 			return
 		}
 		var i int
@@ -117,7 +117,7 @@ func processArgs() {
 		}
 		err = db.delete(id, jotName)
 		if err != nil {
-			fmt.Fprint(os.Stderr, "DB err:", err)
+			fmt.Fprintln(os.Stderr, err)
 			return
 		}
 		fmt.Println("deleted:", *d)
@@ -164,7 +164,7 @@ func processArgs() {
 			fmt.Println("No jots on this system")
 		}
 	case *cleanAll:
-		if !confirm("DELETE ALL JOT FROM THE SYSTEM?") {
+		if !confirm("DELETE ALL JOTS FROM THE SYSTEM?") {
 			fmt.Fprintf(os.Stderr, "not deleted\n")
 			return
 		}

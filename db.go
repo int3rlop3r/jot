@@ -90,7 +90,7 @@ func (d *DB) uninitialize(curPath string) error {
 	}
 	res, err := stmt.Exec(curPath)
 	if err != nil {
-		return fmt.Errorf("init: couldn't insert: %s", err)
+		return fmt.Errorf("init: couldn't untrack: %s", err)
 	}
 	no, err := res.RowsAffected()
 	if err != nil {
@@ -138,7 +138,7 @@ func (d *DB) getJotDir(jotPath string) (int64, error) {
 		return 0, err
 	}
 	if !id.Valid {
-		return 0, fmt.Errorf("jot dir not initialized: %s", jotPath)
+		return 0, fmt.Errorf("jot dir not initialized, run `jot -t` to start tracking dir - %s", jotPath)
 	}
 	return id.Int64, nil
 }
