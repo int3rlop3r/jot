@@ -103,7 +103,7 @@ func processArgs() {
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}
-		fmt.Fprint(os.Stdin, *jot.contents)
+		fmt.Fprint(os.Stdout, *jot.contents)
 	case *d != "":
 		if !confirm(fmt.Sprintf("Delete: %s", *d)) {
 			fmt.Fprintf(os.Stderr, "didn't delete: %s\n", *d)
