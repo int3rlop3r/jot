@@ -22,4 +22,4 @@ Jot is a tool that helps you take notes in your terminal without leaving files l
 
 ### Install
 
-You can download a binary from here [releases](https://github.com/int3rlop3r/jot/releases) (don't forget to mark it as 'executable').
+You can download a binary (for linux) from [here](https://github.com/int3rlop3r/jot/releases) (don't forget to mark it as 'executable').
