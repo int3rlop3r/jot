@@ -1,5 +1,6 @@
 # Jot
-Jot stuff down without messing up your workspace!
+
+Jot is a tool that helps you take notes in your terminal without leaving files lying around in your project's directory. It does this by grouping all your notes (a.k.a. jots) under a "tracked" workspace. Your "jots" are stored actually stored in an sqlite db and can be viewed inside directories that they were created in using jot commands.
 
 [![asciicast](https://asciinema.org/a/bqlsbmokx5zdc0ti4y901krde.png)](https://asciinema.org/a/bqlsbmokx5zdc0ti4y901krde)
 
@@ -23,5 +24,4 @@ Jot stuff down without messing up your workspace!
 
 ### Install
 
-    $ go get github.com/int3rlop3r/jot
-
+You can download a binary from here [releases](https://github.com/int3rlop3r/jot/releases) (don't forget to mark it as 'executable').
