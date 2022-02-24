@@ -1,6 +1,6 @@
 # Jot
 
-Jot is a tool that helps you take notes in your terminal without leaving files lying around in your project's directory. It does this by grouping all your notes (a.k.a. jots) under a "tracked" workspace. Your "jots" are stored actually stored in an sqlite db and can be viewed inside directories that they were created in using `jot`'s commands. All jots are opened in the default editor (you can change it using `update-alternatives`)
+Jot is a tool that helps you take notes in your terminal without leaving files lying around in your project's directory. It does this by grouping all your notes (a.k.a. jots) under a "tracked" workspace. Your "jots" are actually stored in an sqlite db and can be viewed inside directories that they were created in using `jot`'s commands. All jots are opened in the default editor (you can change it using `update-alternatives`)
 
 ### Usage
 
